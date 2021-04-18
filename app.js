@@ -18,7 +18,7 @@
 const fs = require("fs");
 const express = require("express");
 const bodyParser = require("body-parser");
-// const user = require("./routes/user");
+const user = require("./routes/user");
 const nunjucks = require("nunjucks")
 const cookieParser = require('cookie-parser')
 // var AdmZip = require("adm-zip")
@@ -78,7 +78,7 @@ app.get("/favicon.ico", (req, res) => {
   res.sendFile(__dirname + '/front/assets/images/parking.ico')
 });
 
-// app.use("/user", user);
+app.use("/user", user);
 
 const topicName = 'MyTopic';
 // const data = JSON.stringify({foo: 'bar'});
@@ -87,43 +87,6 @@ const { json } = require("body-parser");
 
 const subscriptionName = 'MySub';
 var notificationMsg = '';
-
-// app.post("/sendMessage", async (req, res) => {
-//   try {
-//     const form = formidable({
-//       multiples: true
-//     });
-//     var cookies = parseCookies(req)
-//     form.parse(req, async (err, fields, files) => {
-//       if (err) {
-//         console.error('Error', err)
-//         return res.status(400).json({
-//           "error": "form-error"
-//         });
-//       }
-//       const {
-//         message
-//       } = fields;
-      
-//       let errs = {};
-      
-//       if (message.length == 0) {
-//         errs.textContentErr = "Please enter the text content";
-//       }
-      
-//       if (Object.keys(errs).length != 0) {
-//         console.error('Error', errs)
-//         return res.status(400).json(errs);
-//       }
-      
-//       let email = cookies["Email"]
-//       publishMessage(JSON.stringify({"from": email, "to": "gvb@gmail.com", "message" : message}))
-//       res.redirect("/")
-//     })
-//   } catch (error) {
-//     console.log(error.message) 
-//   }
-// })
 
 app.get("/", auth, async (req, res) => {
   try {
