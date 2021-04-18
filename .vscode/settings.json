@@ -1,0 +1,8 @@
+{
+    "appService.zipIgnorePattern": [
+        "node_modules{,/**}",
+        ".vscode{,/**}"
+    ],
+    "appService.defaultWebAppToDeploy": "/subscriptions/fef19463-7e35-49ff-b418-f419550c1a5f/resourceGroups/appsvc_linux_centralus/providers/Microsoft.Web/sites/cloud-parking-app",
+    "appService.deploySubpath": "."
+}

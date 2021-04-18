@@ -27,6 +27,7 @@
     "express-session": "^1.17.1",
     "express-validator": "^6.10.0",
     "formidable": "^1.2.2",
+    "jsonwebtoken": "^8.5.1",
     "nunjucks": "^3.2.3",
     "zlib": "^1.0.5"
   }
