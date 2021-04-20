@@ -12,114 +12,141 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-'use strict';
+"use strict";
 
 // [START gae_node_request_example]
 const fs = require("fs");
 const express = require("express");
 const bodyParser = require("body-parser");
-const user = require("./routes/user");
-const nunjucks = require("nunjucks")
-const cookieParser = require('cookie-parser')
-// var AdmZip = require("adm-zip")
-var zlib = require("zlib")
-const formidable = require("formidable");
-const auth = require("./middleware/auth")
+const translate = require("./translate");
+const nunjucks = require("nunjucks");
+const cookieParser = require("cookie-parser");
+var zlib = require("zlib");
+const { ServiceBusClient } = require("@azure/service-bus");
+require("dotenv").config();
+
+const connectionString =
+  process.env.SERVICEBUS_CONNECTION_STRING ||
+  "Endpoint=sb://parking-azure.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=4t/re/ieD7MEH0eOti0WkpxrsHYauETMBL75wqGW9YY=";
+const queueName = process.env.QUEUE_NAME || "Notifications";
+
+var notificationMsg = "";
 
 const app = express();
 
-const postsPerPage = 5;
-
-app.use(bodyParser.urlencoded({
-  extended: false
-}))
+app.use(
+  bodyParser.urlencoded({
+    extended: false,
+  })
+);
 
 app.use(cookieParser());
 app.use(bodyParser.json());
 
-nunjucks.configure('front', {
+nunjucks.configure("front", {
   autoescape: true,
   watch: true,
   express: app,
-})
+});
 
 app.get(/assets\/postImages\/*/, (req, res) => {
-  let img = fs.readFileSync(__dirname + "/front" + req.url)
-  let unzipped = zlib.unzipSync(img)
-  img = zlib.gzipSync(unzipped)
-  res.setHeader('Content-Type', 'image/jpg');
-  res.setHeader('Content-Encoding', 'gzip');
-  res.send(img)
-})
-
-app.use('/assets/', express.static(__dirname + '/front/assets/', {
-  etag: true,
-  // maxage: '1h'
-}))
-
-function parseCookies (request) {
-  var list = {},
-  rc = request.headers.cookie;
-  
-  rc && rc.split(';').forEach(function( cookie ) {
-    var parts = cookie.split('=');
-    list[parts.shift().trim()] = decodeURI(parts.join('='));
-  });
-  
-  return list;
-}
-
-app.get("/login", async (req, res) => {
-  res.render("login-signup.html")
+  let img = fs.readFileSync(__dirname + "/front" + req.url);
+  let unzipped = zlib.unzipSync(img);
+  img = zlib.gzipSync(unzipped);
+  res.setHeader("Content-Type", "image/jpg");
+  res.setHeader("Content-Encoding", "gzip");
+  res.send(img);
 });
+
+app.use(
+  "/assets/",
+  express.static(__dirname + "/front/assets/", {
+    etag: true,
+    // maxage: '1h'
+  })
+);
+
+// app.get("/texttospeech", (req, res) => {
+//   res.type("audio/wav");
+//   var buffer = tts("", null, "ro-RO-AlinaNeural", req, res);
+// });
+
+// app.get("/login", async (req, res) => {
+//     res.render("login-signup.html");
+// });
 
 app.get("/favicon.ico", (req, res) => {
-  res.setHeader("Content-Type", "image/x-ico")
-  res.sendFile(__dirname + '/front/assets/images/parking.ico')
+  res.setHeader("Content-Type", "image/x-ico");
+  res.sendFile(__dirname + "/front/assets/images/parking.ico");
 });
 
-app.use("/user", user);
+// app.use("/user", user);
 
-const topicName = 'MyTopic';
-// const data = JSON.stringify({foo: 'bar'});
+var filenames = {
+  'Conduceti prudent' : 'conduceti_prudent.wav', 
+  'Purtati centura de siguranta' : 'centura.wav', 
+  'Nu uitati copilul in masina' : 'copilul.wav', 
+  'Pe drumurile nationale, aprindeti luminile de intalnire' : 'luminile.wav'
+}
 
-const { json } = require("body-parser");
+async function receiveMsgs() {
+  const sbClient = new ServiceBusClient(connectionString);
 
-const subscriptionName = 'MySub';
-var notificationMsg = '';
+  // If receiving from a subscription you can use the createReceiver(topicName, subscriptionName) overload
+  // instead.
+  const queueReceiver = sbClient.createReceiver(queueName);
 
-app.get("/", auth, async (req, res) => {
+  // To receive messages from sessions, use getSessionReceiver instead of getReceiver or look at
+  // the sample in sessions.ts file
   try {
-    let cookies = parseCookies(req)
-    let email = cookies["Email"]
-    res.render("./map.html", {
-      messages: []
-    })
-  } catch (e) {
-    res.render("login-signup.html")
+    while(true) {
+      const messages = await queueReceiver.receiveMessages(1, {
+        maxWaitTimeInMs: 5000,
+      });
+
+      if (!messages.length) {
+        continue;
+      }
+
+      // console.log(`Received message: ${messages[0].body}`);
+      notificationMsg = messages[0].body.toString();
+
+      await queueReceiver.completeMessage(messages[0]);
+    }
+    await queueReceiver.close();
+  } finally {
+    await sbClient.close();
   }
-})
+}
 
-app.get('/logout', (req, res) => {
-  res.clearCookie("Authorization")
-  res.clearCookie("Email")
-  res.redirect('/')
-})
+receiveMsgs().catch((err) => {
+  console.log("Error occurred: ", err);
+});
 
-app.get('/check-notifications', async (req, res) => {
-  res.status(200).json(JSON.stringify({"message": notificationMsg}))
-})
+app.get("/", async (req, res) => {
+    res.render("./map.html", {
+      messages: [],
+    });
+});
 
-app.get('*', function (req, res) {
-  res.status(404).render('404.html');
+app.get("/check-notifications", async (req, res) => {
+  var messageEng = ''
+  if(notificationMsg != '') {
+    messageEng = await translate(notificationMsg, "en");
+  }
+
+  res.status(200).json(JSON.stringify({ message: notificationMsg, messageEng: messageEng, audio: filenames[notificationMsg] }));
+});
+
+app.get("*", function (req, res) {
+  res.status(404).render("404.html");
 });
 
 // Start the server
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 8079;
 app.listen(PORT, () => {
   console.log(`App listening on port ${PORT}`);
-  console.log('Press Ctrl+C to quit.');
+  console.log("Press Ctrl+C to quit.");
 });
-// [END gae_node_request_example]
 
 module.exports = app;

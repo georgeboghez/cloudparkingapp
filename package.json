@@ -1,6 +1,9 @@
 {
   "name": "cloudparkingapp",
   "version": "1.0.0",
+  "engines": {
+    "node": "14.15.1"
+  },
   "description": "",
   "main": "app.js",
   "scripts": {
@@ -18,17 +21,23 @@
   },
   "homepage": "https://github.com/georgeboghez/cloudparkingapp#readme",
   "dependencies": {
+    "@azure/service-bus": "^7.0.5",
     "adm-zip": "^0.5.5",
     "bcryptjs": "^2.4.3",
     "body-parser": "^1.19.0",
     "chokidar": "^3.5.1",
     "cookie-parser": "^1.4.5",
+    "dotenv": "^8.2.0",
     "express": "^4.17.1",
     "express-session": "^1.17.1",
     "express-validator": "^6.10.0",
     "formidable": "^1.2.2",
     "jsonwebtoken": "^8.5.1",
+    "microsoft-cognitiveservices-speech-sdk": "^1.16.0",
+    "mongodb": "^3.6.6",
+    "node-fetch": "^2.6.1",
     "nunjucks": "^3.2.3",
+    "request": "^2.88.2",
     "zlib": "^1.0.5"
   }
 }

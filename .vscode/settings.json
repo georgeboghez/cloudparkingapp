@@ -3,6 +3,12 @@
         "node_modules{,/**}",
         ".vscode{,/**}"
     ],
-    "appService.defaultWebAppToDeploy": "/subscriptions/fef19463-7e35-49ff-b418-f419550c1a5f/resourceGroups/appsvc_linux_centralus/providers/Microsoft.Web/sites/cloud-parking-app",
-    "appService.deploySubpath": "."
+    "appService.deploySubpath": ".",
+    "appService.defaultWebAppToDeploy": "/subscriptions/ba7b2b77-a171-4f78-963f-7e4e4948d17d/resourceGroups/parking-app/providers/Microsoft.Web/sites/cloud-parking-app-azure",
+    "azureFunctions.deploySubpath": ".",
+    "azureFunctions.scmDoBuildDuringDeployment": true,
+    "azureFunctions.pythonVenv": ".venv",
+    "azureFunctions.projectLanguage": "Python",
+    "azureFunctions.projectRuntime": "~3",
+    "debug.internalConsoleOptions": "neverOpen"
 }

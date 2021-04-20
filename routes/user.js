@@ -1,5 +1,6 @@
 const express = require("express");
 const session = require('express-session')
+const Driver = require('../config/db')
 const {
     check,
     validationResult
@@ -8,18 +9,11 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 
 const router = express.Router();
+mongoDriver = new Driver();
 
-// const auth = require("../middleware/auth")
-const CONSTANTS = require("../config/CONSTANTS")
+mongoDriver.connect();
+
 const request = require("request")
-// Imports the Google Cloud client library
-const { Datastore } = require("@google-cloud/datastore");
-
-// Creates a client
-const datastore = new Datastore({
-    projectId: 'test24-1561374558621', //eg my-project-0o0o0o0o'
-    keyFilename: "test24-1561374558621-84e3e44e928c.json" //eg my-project-0fwewexyz.json
-});
 
 /**
 * @method - POST
@@ -47,60 +41,29 @@ router.post(
                 errorSignup: true
             });
         }
-        if (req.body['g-recaptcha-response'] === undefined || req.body['g-recaptcha-response'] === '' || req.body['g-recaptcha-response'] === null) {
-            return res.status(400).render("./login-signup.html", {
-                errors: ['Captcha not completed'],
-                errorSignup: true
-            })
-        }
-        var secretKey = CONSTANTS.CAPTCHA_KEY
-        var verificationUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${req.body['g-recaptcha-response']}`
-        request(verificationUrl, function (error, response, body) {
-            body = JSON.parse(body)
-            if (body.success !== undefined && !body.success) {
-                
-                return res.status(400).render("./login-signup.html", {
-                    errors: ['Failed verification!'],
-                    errorSignup: true
-                })
-            }
-        })
         const {
             username,
             email,
             password
         } = req.body;
         try {
-            const query = datastore.createQuery('User').filter("email", "=", email);
-            const [users] = await datastore.runQuery(query);
-            
-            if (users.length > 0) {
+            let users = await mongoDriver.find({'email' : email})
+            let count = await users.count();
+            if (count > 0) {
                 return res.status(400).render("./login-signup.html", {
                     errors: ["User Already Exists"],
                     errorSignup: true
                 });
             }
             
-            const kind = "User";
-            const userKey = datastore.key([kind]);
-            user = {
-                key: userKey,
-                data: {
-                    "username": username,
-                    "email" : email,
-                    "password": password
-                }
-            };
-            
             const salt = await bcrypt.genSalt(10);
-            user.data.password = await bcrypt.hash(password, salt);
+            let user = { username: username, password: '', email: email}
+            user.password = await bcrypt.hash(password, salt);
             
-            // Saves the entity
-            await datastore.save(user);
-            
+            let result = await mongoDriver.insertDocument(user)
             const payload = {
                 user: {
-                    id: user.userKey
+                    id: email
                 }
             };
             jwt.sign(
@@ -140,37 +103,23 @@ router.post(
                         })
                     });
                 }
-                if (req.body['g-recaptcha-response'] === undefined || req.body['g-recaptcha-response'] === '' || req.body['g-recaptcha-response'] === null) {
-                    return res.status(400).render("./login-signup.html", {
-                        errors: ['Captcha not completed']
-                    })
-                }
-                var secretKey = CONSTANTS.CAPTCHA_KEY
-                var verificationUrl = `https://www.google.com/recaptcha/api/siteverify?secret=${secretKey}&response=${req.body['g-recaptcha-response']}`
-                request(verificationUrl, function (error, response, body) {
-                    body = JSON.parse(body)
-                    if (body.success !== undefined && !body.success) {
-                        
-                        return res.status(400).render("./login-signup.html", {
-                            errors: ['Failed verification!']
-                        })
-                    }
-                })
                 const {
                     email,
                     password
                 } = req.body;
                 try {
-                    const query = datastore.createQuery('User').filter("email", "=", email);
+                    // const query = datastore.createQuery('User').filter("email", "=", email);
                     
-                    const [users] = await datastore.runQuery(query);
-                    
-                    if (users.length == 0) {
+                    // const [users] = await datastore.runQuery(query);
+                    let users = await mongoDriver.find({'email' : email})
+                    let count = await users.count()
+                    if (count == 0) {
                         return res.status(400).render("./login-signup.html", {
                             errors: ["User does not exist"]
                         });
                     }
-                    let user = users[0]
+                    let user = await users.next()
+                    
                     const isMatch = await bcrypt.compare(password, user.password);
                     if (!isMatch)
                     return res.status(400).render("./login-signup.html", {
@@ -178,7 +127,7 @@ router.post(
                     });
                     const payload = {
                         user: {
-                            id: user.id
+                            id: email
                         }
                     };
                     jwt.sign(
@@ -203,3 +152,4 @@ router.post(
                 );
                 
                 module.exports = router
+                
